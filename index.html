@@ -1,0 +1,2315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickBill POS - Shop Manager</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            /* Dark Theme (Default) */
+            --bg: #0a0e1a;
+            --bg-card: #111827;
+            --bg-sidebar: #0d1117;
+            --bg-input: #1a2332;
+            --border: #1e2d42;
+            --text: #e2e8f0;
+            --text-muted: #64748b;
+            --accent: #22d3ee;
+            --accent-bg: #22d3ee;
+            --accent-gradient: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+            --shadow-accent: rgba(34, 211, 238, 0.25);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="light"] {
+            --bg: #f0f4f8;
+            --bg-card: #ffffff;
+            --bg-sidebar: #1a2332;
+            --bg-input: #f8fafc;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --accent: #0891b2;
+            --accent-bg: #0891b2;
+            --accent-gradient: linear-gradient(135deg, #0891b2 0%, #0369a1 100%);
+            --shadow-accent: rgba(8, 145, 178, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'DM Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            transition: var(--transition);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Utility Classes */
+        .flex {
+            display: flex;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .flex-col {
+            flex-direction: column;
+        }
+
+        .gap-2 {
+            gap: 0.5rem;
+        }
+
+        .gap-3 {
+            gap: 0.75rem;
+        }
+
+        .gap-4 {
+            gap: 1rem;
+        }
+
+        .p-4 {
+            padding: 1rem;
+        }
+
+        .p-5 {
+            padding: 1.25rem;
+        }
+
+        .px-4 {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .py-2 {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .rounded-xl {
+            border-radius: 0.75rem;
+        }
+
+        .rounded-2xl {
+            border-radius: 1rem;
+        }
+
+        .border {
+            border: 1px solid var(--border);
+        }
+
+        .border-b {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .w-full {
+            width: 100%;
+        }
+
+        .h-full {
+            height: 100%;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Layout */
+        .app-shell {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            height: 56px;
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 1.25rem;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 2rem;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 99px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Login Page */
+        .login-page {
+            position: fixed;
+            inset: 0;
+            background-color: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .login-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 10;
+        }
+
+        .login-bg-effects {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .bg-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.1;
+        }
+
+        .glow-1 {
+            top: -10%;
+            left: -10%;
+            width: 400px;
+            height: 400px;
+            background: var(--accent);
+        }
+
+        .glow-2 {
+            bottom: -10%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: #3b82f6;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input {
+            width: 100%;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: var(--text);
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            outline: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 10px 15px -3px var(--shadow-accent);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+        }
+
+        /* Sidebar Nav */
+        .sidebar-logo {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--accent-gradient);
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 4px 12px var(--shadow-accent);
+        }
+
+        .nav-list {
+            padding: 1rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            color: #94a3b8;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+            margin-bottom: 0.25rem;
+            background: transparent;
+        }
+
+        .nav-item:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+            background: rgba(34, 211, 238, 0.1);
+            border-color: rgba(34, 211, 238, 0.2);
+        }
+
+        .nav-item i {
+            font-size: 1.1rem;
+        }
+
+        .sidebar-bottom {
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+        }
+
+        .stat-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            background: rgba(34, 211, 238, 0.1);
+            color: var(--accent);
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .stat-trend {
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .trend-up {
+            color: #10b981;
+        }
+
+        .trend-down {
+            color: #ef4444;
+        }
+
+        /* Tables */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            padding: 1rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.875rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            padding: 0.25rem 0.6rem;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .badge-info {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        /* POS Billing */
+        .pos-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 1.5rem;
+            height: calc(100vh - 100px);
+        }
+
+        .pos-products {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            overflow: hidden;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .product-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .product-card:hover {
+            border-color: var(--accent);
+            transform: scale(1.02);
+        }
+
+        .product-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .product-price {
+            font-weight: 700;
+            color: var(--accent);
+            font-size: 1rem;
+        }
+
+        .product-stock {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .cart-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .cart-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .cart-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .cart-item-info {
+            flex: 1;
+        }
+
+        .cart-item-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .cart-item-price {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .cart-qty {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-input);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
+        }
+
+        .qty-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text);
+            font-size: 0.75rem;
+        }
+
+        .cart-summary {
+            padding: 1.5rem;
+            background: var(--bg-input);
+            border-top: 1px solid var(--border);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .summary-total {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--border);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            width: 90%;
+            max-width: 500px;
+            padding: 2rem;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 2000;
+        }
+
+        .toast {
+            background: #059669;
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Animations */
+        .page-fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive Utilities */
+        .mobile-only {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .desktop-only {
+                display: none !important;
+            }
+
+            .mobile-only {
+                display: block !important;
+            }
+
+            .sidebar {
+                width: 70px;
+            }
+
+            .sidebar-logo span,
+            .nav-item span {
+                display: none;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+        }
+
+        /* Responsive Animations */
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            @page {
+                margin: 0;
+                size: auto;
+            }
+
+            html,
+            body {
+                height: auto;
+                overflow: visible;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white;
+            }
+
+            body>*:not(.modal-overlay) {
+                display: none !important;
+            }
+
+            .modal-overlay {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                background: white !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                padding: 10mm !important;
+                /* This creates the margin for the content instead of body margin */
+                margin: 0 !important;
+            }
+
+            .modal {
+                box-shadow: none !important;
+                border: none !important;
+                width: 320px !important;
+                max-width: 100% !important;
+                padding: 0 !important;
+                transform: none !important;
+                margin: 0 auto !important;
+                page-break-inside: avoid !important;
+                display: block !important;
+                max-height: none !important;
+                overflow: visible !important;
+            }
+
+            table {
+                font-size: 10pt;
+                page-break-inside: auto;
+            }
+
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+
+            h2 {
+                font-size: 14pt !important;
+            }
+
+            p,
+            span,
+            td,
+            th {
+                font-size: 9pt !important;
+            }
+        }
+    </style>
+</head>
+
+<body data-theme="dark">
+
+    <!-- Auth Layer -->
+    <div id="login-page" class="login-page hidden">
+        <div class="login-bg-effects">
+            <div class="bg-glow glow-1"></div>
+            <div class="bg-glow glow-2"></div>
+        </div>
+        <div class="login-card">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div class="logo-icon" style="width: 56px; height: 56px; margin: 0 auto 1rem;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M5 5v14M9 5v14M13 5v14M17 5v14M21 5v14" />
+                    </svg>
+                </div>
+                <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">QuickBill POS</h1>
+                <p style="color: var(--text-muted); font-size: 0.875rem;">Sign in to your shop dashboard</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="login-email" class="form-input" placeholder="admin@shop.com" required
+                        value="admin@shop.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="login-password" class="form-input" placeholder="••••••••" required
+                        value="admin123">
+                </div>
+                <div id="login-error" style="color: #ef4444; font-size: 0.75rem; margin-bottom: 1rem; display: none;">
+                    Invalid credentials</div>
+                <button type="submit" class="btn btn-primary w-full">Sign In</button>
+            </form>
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.75rem; margin-top: 1.5rem;">Demo:
+                admin@shop.com / admin123</p>
+        </div>
+    </div>
+
+    <!-- Main App UI -->
+    <div id="app-ui" class="app-shell">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M5 5v14M9 5v14M13 5v14M17 5v14M21 5v14" />
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-weight: 700; font-size: 0.875rem;">QuickBill POS</div>
+                    <div
+                        style="font-size: 0.625rem; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase;">
+                        Shop Manager</div>
+                </div>
+            </div>
+            <nav class="nav-list">
+                <button class="nav-item active" data-page="dashboard">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
+                    Dashboard
+                </button>
+                <button class="nav-item" data-page="billing">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M5 5v14M9 5v14M13 5v14M17 5v14M21 5v14" />
+                    </svg>
+                    Billing POS
+                </button>
+                <button class="nav-item" data-page="products">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                        <line x1="12" y1="22.08" x2="12" y2="12" />
+                    </svg>
+                    Products
+                </button>
+                <button class="nav-item" data-page="invoices">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                    Invoices
+                </button>
+                <button class="nav-item" data-page="reports">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10" />
+                        <line x1="12" y1="20" x2="12" y2="4" />
+                        <line x1="6" y1="20" x2="6" y2="14" />
+                    </svg>
+                    Reports
+                </button>
+                <button class="nav-item" data-page="settings">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    Settings
+                </button>
+            </nav>
+            <div class="sidebar-bottom">
+                <button id="theme-toggle" class="nav-item">
+                    <svg id="theme-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </svg>
+                    <span id="theme-text">Light Mode</span>
+                </button>
+                <button id="logout-btn" class="nav-item" style="color: #f87171;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-container">
+            <header>
+                <button id="mobile-menu"
+                    style="display: none; background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+                <h2 id="page-title" style="font-size: 1rem; font-weight: 700;">Dashboard</h2>
+                <div style="margin-left: auto; display: flex; align-items: center; gap: 1.25rem;">
+                    <!-- Notification Bell -->
+                    <div class="relative cursor-pointer" onclick="toggleNotifications()" style="position: relative;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            style="color: var(--text-muted);">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                        <div id="notif-badge" class="badge-danger"
+                            style="position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; border-radius: 50%; font-size: 9px; display: flex; align-items: center; justify-content: center; display: none; background: #ef4444; color: white; font-weight: 700;">
+                            0</div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                            <div style="font-size: 0.875rem; font-weight: 600;">Admin</div>
+                            <div style="font-size: 0.625rem; color: var(--text-muted);">Manager</div>
+                        </div>
+                        <div
+                            style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.75rem;">
+                            A</div>
+                    </div>
+                </div>
+
+                <div id="notif-panel" class="card"
+                    style="position: fixed; top: 70px; right: 20px; width: 300px; max-height: 400px; z-index: 1001; display: none; box-shadow: var(--shadow-lg); overflow-y: auto; border: 1px solid var(--border);">
+                    <div class="p-4 border-b flex justify-between items-center bg-card">
+                        <h4 style="font-weight: 700; font-size: 0.9rem;">Remote Bill Requests</h4>
+                        <span class="badge badge-info" id="notif-count" style="font-size: 0.7rem;">0 New</span>
+                    </div>
+                    <div id="notif-list" class="p-2 bg-card"></div>
+                </div>
+            </header>
+
+            <main id="main-content" class="p-5">
+                <!-- Pages will be injected here -->
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals & Overlays -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal" id="modal-content">
+            <!-- Modal content injected here -->
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script>
+        // --- STATE MANAGEMENT ---
+        const DEFAULT_STATE = {
+            currentPage: 'dashboard',
+            user: null,
+            products: [
+                { id: 1, name: "Premium Basmati Rice", price: 1200, quantity: 45, barcode: "8901234567890", category: "Groceries", sku: "GRC001" },
+                { id: 2, name: "Sunflower Oil 1L", price: 145, quantity: 8, barcode: "8902345678901", category: "Groceries", sku: "GRC002" },
+                { id: 3, name: "Colgate Toothpaste", price: 89, quantity: 3, barcode: "8903456789012", category: "Personal Care", sku: "PC001" },
+                { id: 4, name: "Dettol Soap", price: 55, quantity: 15, barcode: "8904567890123", category: "Personal Care", sku: "PC002" },
+                { id: 5, name: "Parle-G Biscuits", price: 30, quantity: 20, barcode: "8905678901234", category: "Snacks", sku: "SNK001" }
+            ],
+            cart: [],
+            invoices: [],
+            gstEnabled: false,
+            shopName: 'My Premium Store',
+            developerName: 'Anmol Tech Solutions',
+            members: [
+                { id: 1, name: 'Admin', email: 'admin@shop.com', role: 'Owner' }
+            ],
+            lastAlertDate: null,
+            adminPhone: '',
+            remoteRequests: []
+        };
+
+        let loadedState = JSON.parse(localStorage.getItem('pos_state')) || {};
+        let state = { ...DEFAULT_STATE, ...loadedState };
+
+        // Ensure critical arrays are present
+        state.products = state.products || DEFAULT_STATE.products;
+        state.cart = state.cart || [];
+        state.invoices = state.invoices || [];
+
+        const saveToLocal = () => {
+            localStorage.setItem('pos_state', JSON.stringify(state));
+        };
+
+        // --- UTILS ---
+        const $ = (id) => document.getElementById(id);
+        const formatPrice = (p) => '₹' + Number(p).toLocaleString('en-IN');
+        const showToast = (message, type = 'success') => {
+            const container = $('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ${message}
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        };
+
+        const generateInvoices = () => {
+            const today = new Date();
+            return Array.from({ length: 8 }, (_, i) => ({
+                id: `INV-${1000 + i}`,
+                date: new Date(today - i * 86400000).toLocaleDateString(),
+                customer: "Walk-in Customer",
+                total: Math.floor(Math.random() * 2000) + 200,
+                items: Math.floor(Math.random() * 5) + 1,
+                details: []
+            }));
+        };
+
+        if (state.invoices.length === 0) {
+            state.invoices = generateInvoices();
+        }
+
+        const toggleModal = (show = true, content = '') => {
+            const overlay = $('modal-overlay');
+            if (show) {
+                $('modal-content').innerHTML = content;
+                overlay.classList.add('active');
+            } else {
+                overlay.classList.remove('active');
+            }
+        };
+
+        // --- BARCODE MACHINE INTEGRATION ---
+        let barcodeBuffer = "";
+        let lastKeyTime = Date.now();
+
+        window.addEventListener('keydown', (e) => {
+            // Only capture if we are on the billing page and not typing in an input
+            if (state.currentPage !== 'billing') return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            const currentTime = Date.now();
+
+            // If the delay between keys is small, it's likely a scanner machine
+            if (currentTime - lastKeyTime > 100) {
+                barcodeBuffer = "";
+            }
+
+            if (e.key === 'Enter') {
+                if (barcodeBuffer.length > 0) {
+                    const product = state.products.find(p => p.barcode === barcodeBuffer);
+                    if (product) {
+                        addToCart(product.id);
+                        showToast(`Scanned: ${product.name}`);
+                    } else {
+                        showToast(`Unknown Barcode: ${barcodeBuffer}`, "error");
+                    }
+                    barcodeBuffer = "";
+                }
+            } else if (e.key.length === 1 && /[0-9a-zA-Z]/.test(e.key)) {
+                barcodeBuffer += e.key;
+            }
+
+            lastKeyTime = currentTime;
+        });
+
+        // --- VOICE FEEDBACK ---
+        const speakProduct = (name, price) => {
+            if (!window.speechSynthesis) return;
+            const msg = new SpeechSynthesisUtterance();
+            msg.text = `${name}, ${price} rupees`;
+            msg.rate = 0.9; // Slightly slower for clarity
+            msg.pitch = 1;
+            window.speechSynthesis.speak(msg);
+        };
+
+        // --- RENDERERS ---
+        const renderDashboard = () => {
+            const lowStock = state.products.filter(p => p.quantity < 10);
+            const todaySales = state.invoices.slice(0, 5).reduce((s, i) => s + i.total, 0);
+
+            return `
+                <div class="page-fade-in">
+                    <div class="flex justify-between items-center" style="margin-bottom: 2rem;">
+                        <div>
+                            <h2 style="font-size: 1.5rem; font-weight: 700;">Welcome, ${state.shopName} 👋</h2>
+                            <p style="color: var(--text-muted); font-size: 0.875rem;">${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="navigate('billing')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            New Bill
+                        </button>
+                    </div>
+
+                    <div class="stats-grid" style="margin-bottom: 2rem;">
+                        <div class="stat-card">
+                            <div class="stat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+                            <div class="stat-value">${formatPrice(todaySales)}</div>
+                            <div class="stat-label">Today's Sales</div>
+                            <div class="stat-trend trend-up">+12% from yesterday</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="color: #10b981; background: rgba(16, 185, 129, 0.1);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+                            <div class="stat-value">₹1,24,580</div>
+                            <div class="stat-label">Monthly Sales</div>
+                            <div class="stat-trend trend-up">32 transactions</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="color: #8b5cf6; background: rgba(139, 92, 246, 0.1);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+                            <div class="stat-value">${state.products.length}</div>
+                            <div class="stat-label">Total Products</div>
+                            <div class="stat-trend">${state.products.length} active items</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="color: #f59e0b; background: rgba(245, 158, 11, 0.1);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18h20.36L10.29 3.86zM12 9v4M12 17h.01"/></svg></div>
+                            <div class="stat-value">${lowStock.length}</div>
+                            <div class="stat-label">Low Stock Alerts</div>
+                            <div class="stat-trend trend-down">Need restocking</div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Recent Invoices</h3>
+                                <button class="btn btn-ghost py-1 px-2" style="font-size: 0.75rem;" onclick="navigate('invoices')">View All</button>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <tbody>
+                                        ${state.invoices.slice(0, 5).map(inv => `
+                                            <tr>
+                                                <td>
+                                                    <div style="font-weight: 600;">${inv.id}</div>
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted);">${inv.customer}</div>
+                                                </td>
+                                                <td style="color: var(--text-muted);">${inv.date}</td>
+                                                <td style="font-weight: 700; color: #10b981; text-align: right;">${formatPrice(inv.total)}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Inventory Alerts</h3>
+                                <span class="badge badge-warning">${lowStock.length} items</span>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <tbody>
+                                        ${lowStock.length ? lowStock.map(p => `
+                                            <tr>
+                                                <td>
+                                                    <div style="font-weight: 600;">${p.name}</div>
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted);">${p.category}</div>
+                                                </td>
+                                                <td style="text-align: right;">
+                                                    <span class="badge badge-danger">${p.quantity} units left</span>
+                                                </td>
+                                            </tr>
+                                        `).join('') : `
+                                            <tr><td colspan="2" style="text-align: center; padding: 3rem; color: var(--text-muted);">All products well stocked!</td></tr>
+                                        `}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderProducts = () => {
+            return `
+                <div class="page-fade-in">
+                    <div class="flex justify-between items-center" style="margin-bottom: 1.5rem;">
+                        <h2 style="font-size: 1.25rem; font-weight: 700;">Product Management</h2>
+                        <button class="btn btn-primary" onclick="showProductForm()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Product
+                        </button>
+                    </div>
+
+                    <!-- Mobile Card View (Visible on small screens) -->
+                    <div class="mobile-only" style="display: none;">
+                        ${state.products.map(p => `
+                            <div class="card p-4" style="margin-bottom: 1rem; position: relative;">
+                                <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 0.25rem;">${p.name}</div>
+                                <div style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.75rem;">${p.sku} | Barcode: ${p.barcode}</div>
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <div style="font-size: 0.75rem; color: var(--text-muted);">Price</div>
+                                        <div style="font-weight: 700; color: var(--accent);">${formatPrice(p.price)}</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.75rem; color: var(--text-muted);">Stock</div>
+                                        <span class="badge ${p.quantity < 10 ? 'badge-danger' : 'badge-success'}">${p.quantity} Units</span>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2" style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                                    <button class="btn btn-ghost w-full py-2" onclick="editProduct(${p.id})">Edit</button>
+                                    <button class="btn btn-ghost w-full py-2" style="color: #ef4444;" onclick="deleteProduct(${p.id})">Delete</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- Desktop Table View -->
+                    <div class="card desktop-only">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Barcode</th>
+                                        <th>Category</th>
+                                        <th>Price</th>
+                                        <th>Stock</th>
+                                        <th style="text-align: right;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${state.products.map(p => `
+                                        <tr>
+                                            <td>
+                                                <div style="font-weight: 600;">${p.name}</div>
+                                                <div style="font-size: 0.75rem; color: var(--text-muted);">${p.sku}</div>
+                                            </td>
+                                            <td class="font-mono" style="font-size: 0.75rem;">${p.barcode}</td>
+                                            <td><span class="badge badge-info">${p.category}</span></td>
+                                            <td style="font-weight: 600;">${formatPrice(p.price)}</td>
+                                            <td>
+                                                <span class="badge ${p.quantity < 10 ? 'badge-danger' : 'badge-success'}">
+                                                    ${p.quantity} units
+                                                </span>
+                                            </td>
+                                            <td style="text-align: right;">
+                                                <button class="btn btn-ghost py-1 px-2" style="padding: 0.4rem;" onclick="editProduct(${p.id})">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                </button>
+                                                <button class="btn btn-ghost py-1 px-2" style="padding: 0.4rem; color: #ef4444;" onclick="deleteProduct(${p.id})">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderBilling = () => {
+            const subtotal = state.cart.reduce((s, i) => s + (i.price * i.qty), 0);
+            const gst = state.gstEnabled ? subtotal * 0.18 : 0;
+            const total = subtotal + gst;
+
+            return `
+                <div class="page-fade-in">
+                    <div class="pos-grid">
+                        <div class="pos-products">
+                            <div class="flex gap-4 items-center">
+                                <div class="form-input flex items-center gap-2" style="flex: 1;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    <input type="text" placeholder="Scan or search..." style="background: none; border: none; color: white; width: 100%; outline: none;" oninput="filterPOSProducts(this.value)">
+                                </div>
+                                <button class="btn btn-primary" style="padding: 0 1rem; border-radius: 12px;" onclick="startBillingScanner()">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                </button>
+                                <button class="btn btn-ghost" onclick="state.gstEnabled = !state.gstEnabled; navigate('billing')">
+                                    ${state.gstEnabled ? 'GST: ON' : 'GST: OFF'}
+                                </button>
+                            </div>
+                            <div id="billing-reader" style="width: 100%; display: none; border-radius: 12px; overflow: hidden; margin-top: 1rem; background: #000;"></div>
+                            <div class="product-grid" id="pos-product-grid">
+                                ${state.products.map(p => `
+                                    <div class="product-card" onclick="addToCart(${p.id})">
+                                        <div class="product-name">${p.name}</div>
+                                        <div class="product-price">${formatPrice(p.price)}</div>
+                                        <div class="product-stock">${p.quantity} in stock</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="cart-panel">
+                            <div class="p-4 border-b">
+                                <h3 class="card-title">Current Order</h3>
+                            </div>
+                            <div class="cart-items">
+                                ${state.cart.length ? state.cart.map(item => `
+                                    <div class="cart-item">
+                                        <div class="cart-item-info">
+                                            <div class="cart-item-name">${item.name}</div>
+                                            <div class="cart-item-price">${formatPrice(item.price)} × ${item.qty}</div>
+                                        </div>
+                                        <div class="cart-qty">
+                                            <div class="qty-btn" onclick="updateCartQty(${item.id}, -1)">-</div>
+                                            <div style="font-size: 0.875rem; width: 20px; text-align: center;">${item.qty}</div>
+                                            <div class="qty-btn" onclick="updateCartQty(${item.id}, 1)">+</div>
+                                        </div>
+                                        <div style="font-weight: 600; width: 80px; text-align: right;">${formatPrice(item.price * item.qty)}</div>
+                                    </div>
+                                `).join('') : '<div style="text-align: center; color: var(--text-muted); margin-top: 4rem;">Cart is empty</div>'}
+                            </div>
+                            <div class="cart-summary">
+                                <div class="summary-row">
+                                    <span>Subtotal</span>
+                                    <span>${formatPrice(subtotal)}</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>GST (18%)</span>
+                                    <span>${formatPrice(gst)}</span>
+                                </div>
+                                <div class="summary-total">
+                                    <span>Total Amount</span>
+                                    <span>${formatPrice(total)}</span>
+                                </div>
+                                <div class="flex items-center justify-between" style="margin-top: 1rem; background: var(--bg-card); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
+                                    <span style="font-size: 0.875rem; font-weight: 600;">Payment Status</span>
+                                    <select id="payment-status" class="form-input" style="width: auto; padding: 0.25rem 0.5rem; height: auto; border-color: var(--accent);">
+                                        <option value="Paid">Paid</option>
+                                        <option value="Unpaid">Unpaid</option>
+                                    </select>
+                                </div>
+
+                                <button class="btn btn-primary w-full" style="margin-top: 1.5rem; height: 50px; font-size: 1rem;" onclick="checkout()" ${state.cart.length === 0 ? 'disabled' : ''}>
+                                    Checkout & Print Bill
+                                </button>
+                                <button class="btn btn-ghost w-full" style="margin-top: 0.75rem; border: 1px dashed var(--accent); color: var(--accent);" onclick="sendToCounter()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                                    Send to Counter
+                                </button>
+                                <button class="btn btn-ghost w-full" style="margin-top: 0.75rem; opacity: 0.6;" onclick="clearCart()">
+                                    Clear Cart
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderInvoices = () => {
+            return `
+                <div class="page-fade-in">
+                    <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Invoice History</h2>
+                    <div class="card">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Invoice #</th>
+                                        <th>Date</th>
+                                        <th>Customer</th>
+                                        <th>Items</th>
+                                        <th>Total</th>
+                                        <th>Status</th>
+                                        <th style="text-align: right;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${state.invoices.map(inv => `
+                                        <tr>
+                                            <td class="font-mono" style="font-weight: 600; color: var(--accent);">${inv.id}</td>
+                                            <td style="color: var(--text-muted);">${inv.date}</td>
+                                            <td style="font-weight: 500;">${inv.customer}</td>
+                                            <td>${inv.items} items</td>
+                                            <td style="font-weight: 700; color: #10b981;">${formatPrice(inv.total)}</td>
+                                            <td><span class="badge ${inv.status === 'Paid' ? 'badge-success' : 'badge-danger'}">${inv.status || 'Paid'}</span></td>
+                                            <td style="text-align: right;">
+                                                <button class="btn btn-ghost py-1 px-2" style="padding: 0.4rem;" onclick="viewInvoice('${inv.id}')">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderReports = () => {
+            return `
+                <div class="page-fade-in">
+                    <div class="flex justify-between items-center" style="margin-bottom: 1.5rem;">
+                        <h2 style="font-size: 1.25rem; font-weight: 700;">Sales Reports</h2>
+                        <button class="btn btn-ghost" onclick="showToast('Exporting to CSV...')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Export CSV
+                        </button>
+                    </div>
+
+                    <div class="stats-grid" style="margin-bottom: 2rem;">
+                        <div class="stat-card">
+                            <div class="stat-label">Gross Revenue</div>
+                            <div class="stat-value">₹8,42,500</div>
+                            <div class="stat-trend trend-up">+15.2% vs last month</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Orders</div>
+                            <div class="stat-value">1,248</div>
+                            <div class="stat-trend trend-up">+8.4% vs last month</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Average Order Value</div>
+                            <div class="stat-value">₹675</div>
+                            <div class="stat-trend trend-down">-2.1% vs last month</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Top Selling Categories</h3>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Items Sold</th>
+                                        <th>Revenue</th>
+                                        <th>Performance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="font-weight: 600;">Groceries</td>
+                                        <td>420</td>
+                                        <td>₹1,34,400</td>
+                                        <td><div style="width: 100px; height: 8px; background: rgba(34, 211, 238, 0.1); border-radius: 4px; overflow: hidden;"><div style="width: 85%; height: 100%; background: var(--accent);"></div></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 600;">Personal Care</td>
+                                        <td>185</td>
+                                        <td>₹64,750</td>
+                                        <td><div style="width: 100px; height: 8px; background: rgba(34, 211, 238, 0.1); border-radius: 4px; overflow: hidden;"><div style="width: 45%; height: 100%; background: var(--accent);"></div></div></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 600;">Snacks</td>
+                                        <td>312</td>
+                                        <td>₹46,800</td>
+                                        <td><div style="width: 100px; height: 8px; background: rgba(34, 211, 238, 0.1); border-radius: 4px; overflow: hidden;"><div style="width: 65%; height: 100%; background: var(--accent);"></div></div></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+        const renderSettings = () => {
+            return `
+                <div class="page-fade-in">
+                    <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Store Settings</h2>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <!-- Shop Info -->
+                        <div class="card p-5">
+                            <h3 style="margin-bottom: 1.5rem; font-size: 1rem;">Shop Identity</h3>
+                            <div class="form-group">
+                                <label class="form-label">Shop Name</label>
+                                <input type="text" id="setting-shop-name" class="form-input" value="${state.shopName}">
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label class="form-label">Admin WhatsApp Number (for Alerts)</label>
+                                <input type="text" id="setting-admin-phone" class="form-input" value="${state.adminPhone || ''}" placeholder="e.g. 919876543210">
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                                <label class="form-label" style="margin-bottom: 0;">Enable GST (18%) on Bills</label>
+                                <input type="checkbox" id="setting-gst-enabled" ${state.gstEnabled ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent);">
+                            </div>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">
+                                Software Branding: <b>Powered by ${state.developerName}</b>
+                            </p>
+                            <div style="margin-top: 2rem;">
+                                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+                            </div>
+                        </div>
+
+                        <!-- Member Management -->
+                        <div class="card p-5">
+                            <div class="flex justify-between items-center" style="margin-bottom: 1.5rem;">
+                                <h3 style="font-size: 1rem;">Staff Members</h3>
+                                <button class="btn btn-ghost" style="padding: 0.4rem;" onclick="showMemberForm()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                </button>
+                            </div>
+                            <div class="table-container">
+                                <table style="font-size: 0.875rem;">
+                                    <thead>
+                                        <tr>
+                                            <th>Member</th>
+                                            <th>Role</th>
+                                            <th style="text-align: right;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${state.members.map(m => `
+                                            <tr>
+                                                <td>
+                                                    <div style="font-weight: 600;">${m.name}</div>
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted);">${m.email}</div>
+                                                </td>
+                                                <td><span class="badge ${m.role === 'Owner' ? 'badge-success' : 'badge-info'}">${m.role}</span></td>
+                                                <td style="text-align: right;">
+                                                    ${m.role !== 'Owner' ? `
+                                                        <button class="btn btn-ghost" style="color: #ef4444; padding: 0.25rem;" onclick="deleteMember(${m.id})">
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                                        </button>
+                                                    ` : ''}
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        // --- CORE LOGIC ---
+        const navigate = (page) => {
+            state.currentPage = page;
+            saveToLocal();
+            const main = $('main-content');
+            const title = $('page-title');
+
+            // Update Nav UI
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active');
+                if (el.dataset.page === page) el.classList.add('active');
+            });
+
+            // Set content
+            switch (page) {
+                case 'dashboard':
+                    title.innerText = 'Dashboard';
+                    main.innerHTML = renderDashboard();
+                    break;
+                case 'products':
+                    title.innerText = 'Product Management';
+                    main.innerHTML = renderProducts();
+                    break;
+                case 'billing':
+                    title.innerText = 'Billing POS';
+                    main.innerHTML = renderBilling();
+                    break;
+                case 'invoices':
+                    title.innerText = 'Invoice History';
+                    main.innerHTML = renderInvoices();
+                    break;
+                case 'reports':
+                    title.innerText = 'Reports & Analytics';
+                    main.innerHTML = renderReports();
+                    break;
+                case 'settings':
+                    title.innerText = 'Settings';
+                    main.innerHTML = renderSettings();
+                    break;
+            }
+        };
+
+        const addToCart = (id) => {
+            const product = state.products.find(p => p.id === id);
+            if (!product) return;
+            if (product.quantity <= 0) {
+                showToast("Product out of stock", "error");
+                return;
+            }
+
+            const existing = state.cart.find(i => i.id === id);
+            if (existing) {
+                existing.qty++;
+            } else {
+                state.cart.push({ ...product, qty: 1 });
+            }
+
+            speakProduct(product.name, product.price);
+            showToast(`${product.name} added to cart`);
+            navigate('billing');
+        };
+
+        const updateCartQty = (id, delta) => {
+            const item = state.cart.find(i => i.id === id);
+            if (item) {
+                item.qty = Math.max(1, item.qty + delta);
+                navigate('billing');
+            }
+        };
+
+        const clearCart = () => {
+            state.cart = [];
+            showToast("Cart cleared");
+            navigate('billing');
+        };
+
+        const checkout = () => {
+            const subtotal = state.cart.reduce((s, i) => s + (i.price * i.qty), 0);
+            const gst = state.gstEnabled ? subtotal * 0.18 : 0;
+            const total = subtotal + gst;
+
+            const newInvoice = {
+                id: `INV-${Date.now().toString().slice(-4)}`,
+                date: new Date().toLocaleDateString(),
+                customer: "Walk-in Customer",
+                subtotal: subtotal,
+                gst: gst,
+                gstEnabled: state.gstEnabled,
+                total: total,
+                status: $('payment-status').value, // Get from UI
+                items: state.cart.length,
+                details: [...state.cart]
+            };
+
+            // Deduct stock
+            state.cart.forEach(cartItem => {
+                const product = state.products.find(p => p.id === cartItem.id);
+                if (product) product.quantity -= cartItem.qty;
+            });
+
+            state.invoices.unshift(newInvoice);
+            state.cart = [];
+            showToast("Bill generated successfully!");
+
+            // Automatically show the invoice for printing
+            viewInvoice(newInvoice.id);
+
+            // Also navigate to invoices in the background
+            navigate('invoices');
+        };
+
+        const deleteProduct = (id) => {
+            const product = state.products.find(p => p.id === id);
+            toggleModal(true, `
+                <div style="text-align: center;">
+                    <div style="width: 60px; height: 60px; background: rgba(239, 68, 68, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ef4444; margin: 0 auto 1.5rem;">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    </div>
+                    <h3 style="margin-bottom: 0.5rem; font-size: 1.25rem;">Delete Product?</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem;">Are you sure you want to delete <b>${product.name}</b>? This action cannot be undone.</p>
+                    <div class="flex gap-3">
+                        <button class="btn btn-ghost w-full" onclick="toggleModal(false)">Cancel</button>
+                        <button class="btn btn-primary w-full" style="background: #ef4444; box-shadow: none;" onclick="confirmDelete(${id})">Delete Now</button>
+                    </div>
+                </div>
+            `);
+        };
+
+        const confirmDelete = (id) => {
+            state.products = state.products.filter(p => p.id !== id);
+            toggleModal(false);
+            showToast("Product deleted");
+            navigate('products');
+        };
+
+        const showProductForm = (id = null) => {
+            const p = id ? state.products.find(x => x.id === id) : { name: '', price: '', quantity: '', category: 'Groceries', barcode: '89' + Math.floor(Math.random() * 10000000000) };
+
+            toggleModal(true, `
+                <h3 style="margin-bottom: 1.5rem;">${id ? 'Edit Product' : 'Add New Product'}</h3>
+                <form onsubmit="saveProduct(event, ${id})">
+                    <div class="form-group">
+                        <label class="form-label">Product Name</label>
+                        <input type="text" id="p-name" class="form-input" value="${p.name}" required>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label">Price (₹)</label>
+                            <input type="number" id="p-price" class="form-input" value="${p.price}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" id="p-qty" class="form-input" value="${p.quantity}" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select id="p-category" class="form-input">
+                            <option ${p.category === 'Groceries' ? 'selected' : ''}>Groceries</option>
+                            <option ${p.category === 'Snacks' ? 'selected' : ''}>Snacks</option>
+                            <option ${p.category === 'Personal Care' ? 'selected' : ''}>Personal Care</option>
+                            <option ${p.category === 'Beverages' ? 'selected' : ''}>Beverages</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Barcode</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="p-barcode" class="form-input" value="${p.barcode}" required>
+                            <button type="button" class="btn btn-ghost" style="padding: 0 1rem; border: 1px solid var(--border);" onclick="startScanner()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="reader" style="width: 100%; display: none; margin-top: 1rem; border-radius: 12px; overflow: hidden;"></div>
+                    <div class="flex gap-3" style="margin-top: 2rem;">
+                        <button type="button" class="btn btn-ghost w-full" onclick="stopScanner(); toggleModal(false)">Cancel</button>
+                        <button type="submit" class="btn btn-primary w-full">${id ? 'Update Product' : 'Add Product'}</button>
+                    </div>
+                </form>
+            `);
+        };
+
+        let html5QrCode = null;
+
+        const startBillingScanner = () => {
+            const reader = $('billing-reader');
+            reader.style.display = 'block';
+
+            html5QrCode = new Html5Qrcode("billing-reader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 150 } },
+                (decodedText) => {
+                    if (decodedText.startsWith('CART:')) {
+                        loadCartFromQR(decodedText);
+                        stopBillingScanner();
+                        return;
+                    }
+                    const product = state.products.find(p => p.barcode === decodedText);
+                    if (product) {
+                        addToCart(product.id);
+                        stopBillingScanner();
+                    } else {
+                        showToast("Unknown Barcode", "error");
+                    }
+                },
+                (err) => { }
+            ).catch(err => showToast("Camera error", "error"));
+        };
+
+        const stopBillingScanner = () => {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    $('billing-reader').style.display = 'none';
+                    html5QrCode = null;
+                });
+            }
+        };
+
+        const startScanner = () => {
+            const reader = $('reader');
+            reader.style.display = 'block';
+
+            html5QrCode = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
+                    $('p-barcode').value = decodedText;
+                    showToast("Barcode scanned: " + decodedText);
+                    stopScanner();
+                },
+                (errorMessage) => {
+                    // console.log(errorMessage);
+                }
+            ).catch((err) => {
+                showToast("Camera error: " + err, "error");
+            });
+        };
+
+        const stopScanner = () => {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    $('reader').style.display = 'none';
+                    html5QrCode = null;
+                }).catch(err => console.log(err));
+            }
+        };
+
+        const saveProduct = (e, id) => {
+            e.preventDefault();
+            const data = {
+                name: $('p-name').value,
+                price: Number($('p-price').value),
+                quantity: Number($('p-qty').value),
+                category: $('p-category').value,
+                barcode: $('p-barcode').value
+            };
+
+            if (id) {
+                const index = state.products.findIndex(p => p.id === id);
+                state.products[index] = { ...state.products[index], ...data };
+                showToast("Product updated");
+            } else {
+                state.products.push({ ...data, id: Date.now(), sku: 'SKU' + Date.now().toString().slice(-4) });
+                showToast("Product added successfully");
+            }
+
+            toggleModal(false);
+            saveToLocal();
+            navigate('products');
+        };
+
+        const editProduct = (id) => showProductForm(id);
+
+        const filterPOSProducts = (val) => {
+            const filtered = state.products.filter(p => p.name.toLowerCase().includes(val.toLowerCase()) || p.barcode.includes(val));
+            const grid = $('pos-product-grid');
+            grid.innerHTML = filtered.map(p => `
+                <div class="product-card" onclick="addToCart(${p.id})">
+                    <div class="product-name">${p.name}</div>
+                    <div class="product-price">${formatPrice(p.price)}</div>
+                    <div class="product-stock">${p.quantity} in stock</div>
+                </div>
+            `).join('');
+        };
+
+        const showMemberForm = () => {
+            toggleModal(true, `
+                <h3 style="margin-bottom: 1.5rem;">Add Staff Member</h3>
+                <form onsubmit="saveMember(event)">
+                    <div class="form-group">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" id="m-name" class="form-input" placeholder="e.g. Rahul Kumar" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" id="m-email" class="form-input" placeholder="rahul@shop.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" id="m-pass" class="form-input" placeholder="••••••••" required>
+                    </div>
+                    <div class="flex gap-3" style="margin-top: 2rem;">
+                        <button type="button" class="btn btn-ghost w-full" onclick="toggleModal(false)">Cancel</button>
+                        <button type="submit" class="btn btn-primary w-full">Add Member</button>
+                    </div>
+                </form>
+            `);
+        };
+
+        const saveMember = (e) => {
+            e.preventDefault();
+            const newMember = {
+                id: Date.now(),
+                name: $('m-name').value,
+                email: $('m-email').value,
+                pass: $('m-pass').value,
+                role: 'Staff'
+            };
+            state.members.push(newMember);
+            saveToLocal();
+            toggleModal(false);
+            showToast("Staff member added");
+            navigate('settings');
+        };
+
+        const deleteMember = (id) => {
+            state.members = state.members.filter(m => m.id !== id);
+            saveToLocal();
+            showToast("Member removed");
+            navigate('settings');
+        };
+
+        const saveSettings = () => {
+            state.shopName = $('setting-shop-name').value;
+            state.adminPhone = $('setting-admin-phone').value;
+            state.gstEnabled = $('setting-gst-enabled').checked;
+            saveToLocal();
+            showToast("Settings saved successfully");
+            navigate('dashboard');
+        };
+
+        const viewInvoice = (id) => {
+            const inv = state.invoices.find(i => i.id === id);
+            if (!inv) return;
+
+            toggleModal(true, `
+                <div class="page-fade-in" style="color: #1e293b; background: white; padding: 2rem; border-radius: 1rem; position: relative;">
+                    <div style="text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: #0f172a; text-transform: uppercase;">${state.shopName}</h2>
+                        <div style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700; margin-top: 0.5rem; background: ${inv.status === 'Unpaid' ? '#fee2e2' : '#dcfce7'}; color: ${inv.status === 'Unpaid' ? '#ef4444' : '#10b981'};">
+                            ${inv.status || 'PAID'}
+                        </div>
+                        <p style="font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">Tax Invoice / Bill of Supply</p>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 2rem; border-bottom: 1px dashed #e2e8f0; padding-bottom: 1rem;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Date</div>
+                            <div style="font-weight: 600;">${inv.date}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Invoice No.</div>
+                            <div style="font-weight: 800; color: #0f172a;"># ${inv.id}</div>
+                        </div>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #e2e8f0;">
+                                <th style="text-align: left; padding: 0.75rem 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Item Description</th>
+                                <th style="text-align: center; padding: 0.75rem 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Qty</th>
+                                <th style="text-align: right; padding: 0.75rem 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Price</th>
+                                <th style="text-align: right; padding: 0.75rem 0; font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${inv.details ? inv.details.map(item => `
+                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 1rem 0; font-size: 0.9rem; font-weight: 500;">${item.name}</td>
+                                    <td style="text-align: center; padding: 1rem 0; font-size: 0.9rem;">${item.qty}</td>
+                                    <td style="text-align: right; padding: 1rem 0; font-size: 0.9rem;">${formatPrice(item.price)}</td>
+                                    <td style="text-align: right; padding: 1rem 0; font-size: 0.9rem; font-weight: 600;">${formatPrice(item.price * item.qty)}</td>
+                                </tr>
+                            `).join('') : `
+                                <tr>
+                                    <td colspan="4" style="padding: 2rem 0; text-align: center; color: #94a3b8;">Item details not available for legacy invoices</td>
+                                </tr>
+                            `}
+                        </tbody>
+                    </table>
+
+                    <div style="border-top: 2px solid #0f172a; padding-top: 1rem; margin-bottom: 3rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                            <span style="color: #64748b;">Subtotal</span>
+                            <span style="font-weight: 600;">${formatPrice(inv.subtotal || inv.total)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                            <span style="color: #64748b;">GST (${inv.gstEnabled ? '18%' : '0%'})</span>
+                            <span style="font-weight: 600;">${formatPrice(inv.gst || 0)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+                            <span style="font-weight: 700; font-size: 1.25rem;">Total Amount</span>
+                            <span style="font-weight: 800; font-size: 1.5rem; color: #0f172a;">${formatPrice(inv.total)}</span>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 1.5rem;">
+                        <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Thank you for shopping with us!</p>
+                        <p style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Powered by ${state.developerName}</p>
+                    </div>
+
+                    <div class="flex gap-3 no-print" style="margin-top: 2rem;">
+                        <button class="btn btn-ghost w-full" style="color: #1e293b; border-color: #cbd5e1;" onclick="toggleModal(false)">Close</button>
+                        <button class="btn btn-primary w-full" onclick="window.print()">Print Bill</button>
+                    </div>
+                </div>
+            `);
+        };
+
+        // --- AUTH ---
+        $('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = $('login-email').value.trim();
+            const pass = $('login-password').value.trim();
+
+            // 1. HARDCODED BYPASS (100% Works)
+            if (email === 'admin@shop.com' && pass === 'admin123') {
+                state.user = { name: 'Admin', email, role: 'Owner' };
+                saveToLocal();
+                $('login-page').classList.add('hidden');
+                $('app-ui').classList.remove('hidden');
+                navigate('dashboard');
+                showToast("Welcome back, Admin!");
+                return;
+            }
+
+            // 2. Try Server Login
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: pass })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    state.user = data.user;
+                    saveToLocal();
+                    $('login-page').classList.add('hidden');
+                    $('app-ui').classList.remove('hidden');
+                    navigate('dashboard');
+                    showToast("Server Login Successful!");
+                } else {
+                    $('login-error').style.display = 'block';
+                    $('login-error').innerText = "Invalid credentials";
+                }
+            } catch (err) {
+                $('login-error').style.display = 'block';
+                $('login-error').innerText = "Server offline. Use default admin@shop.com";
+            }
+        });
+
+        $('logout-btn').addEventListener('click', () => {
+            state.user = null;
+            saveToLocal();
+            $('login-page').classList.remove('hidden');
+            $('app-ui').classList.add('hidden');
+            showToast("Logged out successfully");
+        });
+
+        // --- THEME ---
+        $('theme-toggle').addEventListener('click', () => {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', state.theme);
+            $('theme-text').innerText = state.theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+            $('theme-icon').innerHTML = state.theme === 'dark'
+                ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+                : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+        });
+
+        // --- INIT ---
+        const init = () => {
+            if (state.user) {
+                $('login-page').classList.add('hidden');
+                $('app-ui').classList.remove('hidden');
+                navigate(state.currentPage || 'dashboard');
+            } else {
+                $('login-page').classList.remove('hidden');
+                $('app-ui').classList.add('hidden');
+            }
+
+            // Sync theme
+            if (state.theme) {
+                document.body.setAttribute('data-theme', state.theme);
+                $('theme-text').innerText = state.theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+            }
+        };
+
+        document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
+            btn.addEventListener('click', () => navigate(btn.dataset.page));
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth < 1024) {
+                $('mobile-menu').style.display = 'block';
+            } else {
+                $('mobile-menu').style.display = 'none';
+            }
+        });
+
+        $('mobile-menu').addEventListener('click', () => {
+            $('sidebar').classList.toggle('open');
+        });
+
+        // --- COUNTER TRANSFER LOGIC ---
+        const sendToCounter = () => {
+            if (state.cart.length === 0) return;
+            const cartData = "CART:" + btoa(JSON.stringify(state.cart.map(i => ({ id: i.id, qty: i.qty }))));
+
+            toggleModal(true, `
+                <div style="text-align: center; padding: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem;">Counter Transfer QR</h3>
+                    <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">Admin should scan this QR to print the bill.</p>
+                    <div id="cart-qr" style="background: white; padding: 1rem; border-radius: 1rem; display: inline-block; margin-bottom: 1.5rem;"></div>
+                    <button class="btn btn-primary w-full" onclick="toggleModal(false); clearCart();">Done & New Bill</button>
+                </div>
+            `);
+
+            new QRCode($("cart-qr"), {
+                text: cartData,
+                width: 200,
+                height: 200,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        };
+
+        const loadCartFromQR = (data) => {
+            try {
+                const jsonStr = atob(data.replace('CART:', ''));
+                const items = JSON.parse(jsonStr);
+                state.cart = [];
+                items.forEach(item => {
+                    const product = state.products.find(p => p.id === item.id);
+                    if (product) {
+                        state.cart.push({ ...product, qty: item.qty });
+                    }
+                });
+                navigate('billing');
+                showToast("Order loaded from Staff!");
+                speakProduct("Order", "Loaded");
+            } catch (e) {
+                showToast("Invalid Transfer QR", "error");
+            }
+        };
+        const sendNotification = (msg) => {
+            // BACKEND INTEGRATION PLACEHOLDER
+            // When you build your backend, replace the code below with:
+            // fetch('your-api-url', { method: 'POST', body: JSON.stringify({ message: msg }) });
+
+            const phone = state.adminPhone ? state.adminPhone.replace(/\D/g, '') : '';
+            const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank');
+        };
+
+        const checkLowStockAlert = () => {
+            const today = new Date().toLocaleDateString();
+            if (state.lastAlertDate === today) return;
+
+            const criticalItems = state.products.filter(p => p.quantity <= 3);
+            if (criticalItems.length > 0) {
+                const message = `🚨 *Low Stock Alert: ${state.shopName}*\n\nThe following items are almost out of stock:\n\n${criticalItems.map(p => `• ${p.name}: *${p.quantity} units* left`).join('\n')}\n\nPlease restock soon!`;
+
+                toggleModal(true, `
+                    <div style="text-align: center; padding: 1rem;">
+                        <div style="width: 64px; height: 64px; background: rgba(245, 158, 11, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #f59e0b; margin: 0 auto 1.5rem;">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18h20.36L10.29 3.86zM12 9v4M12 17h.01"/></svg>
+                        </div>
+                        <h2 style="margin-bottom: 0.5rem; font-size: 1.5rem;">Low Stock Warning!</h2>
+                        <p style="color: var(--text-muted); margin-bottom: 2rem;">Items are critically low. Sending report to Admin...</p>
+                        
+                        <div class="flex gap-3">
+                            <button class="btn btn-ghost w-full" onclick="state.lastAlertDate = '${today}'; saveToLocal(); toggleModal(false)">Dismiss</button>
+                            <button class="btn btn-primary w-full" style="background: #25d366; border: none;" onclick="state.lastAlertDate = '${today}'; saveToLocal(); sendNotification(\`${message}\`); toggleModal(false)">
+                                Send Report Now
+                            </button>
+                        </div>
+                    </div>
+                `);
+            }
+        };
+
+        // Run Init
+        // --- NOTIFICATION LOGIC ---
+        const toggleNotifications = () => {
+            const panel = $('notif-panel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            renderNotifications();
+        };
+
+        const renderNotifications = () => {
+            const list = $('notif-list');
+            const badge = $('notif-badge');
+            const count = $('notif-count');
+
+            badge.style.display = state.remoteRequests.length > 0 ? 'flex' : 'none';
+            badge.innerText = state.remoteRequests.length;
+            count.innerText = `${state.remoteRequests.length} New`;
+
+            if (state.remoteRequests.length === 0) {
+                list.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.875rem;">No new requests</div>';
+                return;
+            }
+
+            list.innerHTML = state.remoteRequests.map((req, idx) => `
+                <div class="p-3 mb-2 rounded-lg" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border);">
+                    <div class="flex justify-between items-center mb-2">
+                        <span style="font-weight: 600; font-size: 0.875rem;">Staff: ${req.staffName}</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">${req.time}</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        ${req.items.length} items • ${formatPrice(req.total)}
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-primary py-1 px-2" style="font-size: 0.75rem; flex: 1;" onclick="acceptRemoteBill(${idx})">Load & Print</button>
+                        <button class="btn btn-ghost py-1 px-2" style="font-size: 0.75rem;" onclick="state.remoteRequests.splice(${idx},1); renderNotifications();">Ignore</button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        const acceptRemoteBill = (idx) => {
+            const req = state.remoteRequests[idx];
+            state.cart = req.items;
+            state.remoteRequests.splice(idx, 1);
+            navigate('billing');
+            showToast("Bill loaded from Staff!");
+            renderNotifications(); // update UI
+            toggleNotifications();
+        };
+
+        // Run Init
+        const finalInit = () => {
+            init();
+            renderNotifications();
+            setTimeout(checkLowStockAlert, 1500);
+        };
+
+        finalInit();
+
+    </script>
+</body>
+
+</html>

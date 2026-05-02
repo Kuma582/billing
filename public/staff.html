@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickBill - Staff App</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #22d3ee; --text: #f8fafc; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 1rem; max-width: 500px; margin: auto; }
+        .tab-bar { display: flex; gap: 1rem; margin-bottom: 1rem; }
+        .tab { flex: 1; padding: 1rem; text-align: center; background: var(--card); border-radius: 0.75rem; cursor: pointer; border: 1px solid #334155; }
+        .tab.active { background: var(--accent); color: #000; border: none; font-weight: bold; }
+        .card { background: var(--card); border-radius: 1rem; padding: 1.25rem; margin-bottom: 1rem; }
+        .form-input { width: 100%; padding: 0.8rem; margin-bottom: 1rem; border-radius: 0.5rem; border: 1px solid #334155; background: #0f172a; color: white; outline: none; }
+        .btn { width: 100%; padding: 1rem; border-radius: 0.75rem; border: none; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-success { background: #10b981; color: white; }
+        #reader { width: 100%; border-radius: 1rem; overflow: hidden; display: none; margin-bottom: 1rem; background: #000; }
+        .cart-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #334155; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+        <h2 style="color: var(--accent);">QuickBill Staff</h2>
+        <p style="font-size: 0.8rem; color: #94a3b8;">Wireless Inventory & Billing</p>
+    </div>
+
+    <div class="tab-bar">
+        <div id="tab-scan" class="tab active" onclick="switchTab('scan')">Scan & Bill</div>
+        <div id="tab-add" class="tab" onclick="switchTab('add')">Add Product</div>
+    </div>
+
+    <!-- Section 1: Scan & Bill -->
+    <div id="section-scan">
+        <div id="reader"></div>
+        <div class="card">
+            <button class="btn btn-primary" onclick="toggleScanner()">📷 Scan Barcode</button>
+            <input type="text" id="search" class="form-input" style="margin-top: 1rem;" placeholder="Search by name..." oninput="searchProducts(this.value)">
+            <div id="search-results"></div>
+        </div>
+
+        <div class="card">
+            <h3>Cart (<span id="cart-count">0</span>)</h3>
+            <div id="cart-list" style="margin-top: 1rem;"></div>
+            <div style="margin-top: 1rem; font-size: 1.2rem; font-weight: bold;">Total: ₹<span id="cart-total">0</span></div>
+            <button class="btn btn-success" style="margin-top: 1.5rem; height: 60px; font-size: 1.1rem;" onclick="sendToCounter()">🚀 SEND TO ADMIN (PRINT)</button>
+        </div>
+    </div>
+
+    <!-- Section 2: Add New Product -->
+    <div id="section-add" class="hidden">
+        <div class="card">
+            <h3>Add New Item to Stock</h3>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 1.5rem;">Fill this to add a new product to inventory</p>
+            <form onsubmit="saveNewProduct(event)">
+                <input type="text" id="new-name" class="form-input" placeholder="Product Name" required>
+                <input type="number" id="new-price" class="form-input" placeholder="Price (₹)" required>
+                <input type="number" id="new-qty" class="form-input" placeholder="Initial Quantity" required>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="new-barcode" class="form-input" placeholder="Barcode Number" required>
+                    <button type="button" class="btn btn-primary" style="width: 50px; height: 45px;" onclick="startAddScanner()">📷</button>
+                </div>
+                <button type="submit" class="btn btn-success">Save to Inventory</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let cart = [];
+        let products = [];
+        let html5QrCode;
+
+        // Fetch Products
+        const fetchProducts = () => fetch('/api/products').then(res => res.json()).then(data => products = data);
+        fetchProducts();
+
+        const switchTab = (tab) => {
+            document.getElementById('section-scan').classList.toggle('hidden', tab !== 'scan');
+            document.getElementById('section-add').classList.toggle('hidden', tab !== 'add');
+            document.getElementById('tab-scan').classList.toggle('active', tab === 'scan');
+            document.getElementById('tab-add').classList.toggle('active', tab === 'add');
+            if(html5QrCode) { html5QrCode.stop(); document.getElementById('reader').style.display = 'none'; }
+        };
+
+        const toggleScanner = () => {
+            const reader = document.getElementById('reader');
+            if(reader.style.display === 'block') {
+                html5QrCode.stop();
+                reader.style.display = 'none';
+            } else {
+                reader.style.display = 'block';
+                html5QrCode = new Html5Qrcode("reader");
+                html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+                    const p = products.find(p => p.barcode === text);
+                    if(p) { addToCart(p); toggleScanner(); }
+                    else alert("Product not found! Add it in 'Add Product' tab.");
+                });
+            }
+        };
+
+        const startAddScanner = () => {
+            const reader = document.getElementById('reader');
+            reader.style.display = 'block';
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+                document.getElementById('new-barcode').value = text;
+                html5QrCode.stop();
+                reader.style.display = 'none';
+            });
+        };
+
+        const addToCart = (p) => {
+            const exist = cart.find(i => i._id === p._id);
+            if(exist) exist.qty++;
+            else cart.push({...p, qty: 1});
+            updateUI();
+        };
+
+        const updateUI = () => {
+            document.getElementById('cart-list').innerHTML = cart.map(i => `
+                <div class="cart-item">
+                    <span>${i.name} x ${i.qty}</span>
+                    <span>₹${i.price * i.qty}</span>
+                </div>
+            `).join('');
+            document.getElementById('cart-count').innerText = cart.length;
+            document.getElementById('cart-total').innerText = cart.reduce((s,i) => s + (i.price * i.qty), 0);
+        };
+
+        const searchProducts = (val) => {
+            if(!val) { document.getElementById('search-results').innerHTML = ''; return; }
+            const res = products.filter(p => p.name.toLowerCase().includes(val.toLowerCase())).slice(0, 5);
+            document.getElementById('search-results').innerHTML = res.map(p => `
+                <div onclick='addToCart(${JSON.stringify(p)}); document.getElementById("search").value=""; document.getElementById("search-results").innerHTML="";' style="padding:1rem; border-bottom:1px solid #334155; background:#1e293b;">
+                    ${p.name} - ₹${p.price}
+                </div>
+            `).join('');
+        };
+
+        const saveNewProduct = async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('new-name').value,
+                price: document.getElementById('new-price').value,
+                quantity: document.getElementById('new-qty').value,
+                barcode: document.getElementById('new-barcode').value,
+                category: 'General'
+            };
+            const res = await fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                alert("Product Added to Stock!");
+                fetchProducts();
+                switchTab('scan');
+                e.target.reset();
+            }
+        };
+
+        const sendToCounter = () => {
+            if(cart.length === 0) return alert("Cart is empty!");
+            const billData = {
+                staffName: "Staff Phone",
+                items: cart,
+                total: cart.reduce((s,i) => s + (i.price * i.qty), 0),
+                time: new Date().toLocaleTimeString()
+            };
+            socket.emit('bill:request', billData);
+            alert("Bill sent to Admin! Admin will print it now.");
+            cart = [];
+            updateUI();
+        };
+    </script>
+</body>
+</html>

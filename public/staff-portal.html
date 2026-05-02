@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickBill Staff Portal</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #4f46e5;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --card: #ffffff;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Login Page */
+        #login-screen { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+        .login-card { background: var(--card); padding: 2.5rem; border-radius: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        
+        /* App UI */
+        #app-screen { display: none; flex: 1; flex-direction: column; }
+        .nav { background: var(--card); padding: 1rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .main-content { flex: 1; padding: 1rem; overflow-y: auto; }
+        
+        /* Components */
+        .card { background: var(--card); border-radius: 1rem; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .btn { width: 100%; padding: 1rem; border-radius: 0.75rem; border: none; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 1rem; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:active { transform: scale(0.98); }
+        .input { width: 100%; padding: 0.8rem; margin-bottom: 1rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; }
+        .input:focus { border-color: var(--primary); }
+        
+        #reader { width: 100%; border-radius: 1rem; overflow: hidden; margin-bottom: 1rem; display: none; }
+        .cart-item { display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f1f5f9; }
+        
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; background: #e2e8f0; padding: 0.3rem; border-radius: 0.8rem; }
+        .tab { flex: 1; padding: 0.7rem; text-align: center; border-radius: 0.6rem; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+        .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Login Screen -->
+    <div id="login-screen">
+        <div class="login-card">
+            <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--primary);">Staff Login</h1>
+            <p style="color: #64748b; margin-bottom: 2rem; font-size: 0.9rem;">Sign in to start scanning products</p>
+            <form onsubmit="handleLogin(event)">
+                <input type="email" id="login-email" class="input" placeholder="Staff Email/ID" required>
+                <input type="password" id="login-password" class="input" placeholder="Password" required>
+                <button type="submit" class="btn btn-primary">Login to Terminal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Screen -->
+    <div id="app-screen">
+        <div class="nav">
+            <h2 style="font-size: 1.1rem; color: var(--primary);">QuickBill Staff</h2>
+            <button onclick="location.reload()" style="background:none; border:none; color: #ef4444; font-weight: 600;">Logout</button>
+        </div>
+
+        <div class="main-content">
+            <div class="tabs">
+                <div id="t-scan" class="tab active" onclick="setTab('scan')">Billing</div>
+                <div id="t-add" class="tab" onclick="setTab('add')">Inventory</div>
+            </div>
+
+            <!-- Billing Section -->
+            <div id="s-scan">
+                <div id="reader"></div>
+                <div class="card">
+                    <button class="btn btn-primary" onclick="toggleScanner()" style="display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+                        <span style="font-size: 1.2rem;">📷</span> Scan Item Barcode
+                    </button>
+                    <input type="text" id="search" class="input" style="margin-top:1rem; margin-bottom:0;" placeholder="Or search by name..." oninput="doSearch(this.value)">
+                    <div id="results" style="margin-top: 0.5rem;"></div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">Order List</h3>
+                    <div id="cart-items"></div>
+                    <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 800;">
+                        <span>Total:</span>
+                        <span style="color: var(--primary);">₹<span id="total-val">0</span></span>
+                    </div>
+                    <button class="btn btn-primary" style="margin-top: 1.5rem; background: #10b981; height: 60px;" onclick="sendToAdmin()">🚀 SEND TO PRINT</button>
+                </div>
+            </div>
+
+            <!-- Inventory Section -->
+            <div id="s-add" class="hidden">
+                <div class="card">
+                    <h3>Add New Product</h3>
+                    <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1.5rem;">Register a new item in stock</p>
+                    <form onsubmit="handleNewProduct(event)">
+                        <input type="text" id="n-name" class="input" placeholder="Product Name" required>
+                        <input type="number" id="n-price" class="input" placeholder="Selling Price (₹)" required>
+                        <input type="number" id="n-qty" class="input" placeholder="Current Stock Quantity" required>
+                        <input type="text" id="n-barcode" class="input" placeholder="Barcode" required>
+                        <button type="submit" class="btn btn-primary">Save Product</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io('https://billing-2gll.onrender.com');
+        const API_URL = 'https://billing-2gll.onrender.com';
+        let cart = [];
+        let products = [];
+        let scanner;
+
+        // Sync data
+        const sync = () => fetch(`${API_URL}/api/products`).then(res => res.json()).then(d => products = d);
+        sync();
+
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            
+            // 1. HARDCODED BYPASS (FOR TEST)
+            if (email === 'staff@shop.com' && password === 'staff123') {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'flex';
+                socket.emit('staff:login', { name: 'Demo Staff', time: new Date().toLocaleTimeString() });
+                sync();
+                return;
+            }
+
+            // 2. SERVER LOGIN
+            try {
+                const res = await fetch(`${API_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('app-screen').style.display = 'flex';
+                    socket.emit('staff:login', { name: data.user.name, time: new Date().toLocaleTimeString() });
+                    sync();
+                } else {
+                    alert("Invalid Staff ID or Password!");
+                }
+            } catch(e) {
+                alert("Server offline. Using default staff@shop.com");
+            }
+        };
+
+        const setTab = (t) => {
+            document.getElementById('s-scan').classList.toggle('hidden', t !== 'scan');
+            document.getElementById('s-add').classList.toggle('hidden', t !== 'add');
+            document.getElementById('t-scan').classList.toggle('active', t === 'scan');
+            document.getElementById('t-add').classList.toggle('active', t === 'add');
+            if(scanner) { scanner.stop(); document.getElementById('reader').style.display = 'none'; }
+        };
+
+        const toggleScanner = () => {
+            const r = document.getElementById('reader');
+            if(r.style.display === 'block') {
+                scanner.stop();
+                r.style.display = 'none';
+            } else {
+                r.style.display = 'block';
+                scanner = new Html5Qrcode("reader");
+                scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
+                    const p = products.find(i => i.barcode === txt);
+                    if(p) { addToCart(p); scanner.stop(); r.style.display = 'none'; }
+                });
+            }
+        };
+
+        const addToCart = (p) => {
+            const ex = cart.find(i => i._id === p._id);
+            if(ex) ex.qty++;
+            else cart.push({...p, qty: 1});
+            renderCart();
+        };
+
+        const renderCart = () => {
+            document.getElementById('cart-items').innerHTML = cart.map(i => `
+                <div class="cart-item">
+                    <span>${i.name} <b>x ${i.qty}</b></span>
+                    <span>₹${i.price * i.qty}</span>
+                </div>
+            `).join('');
+            document.getElementById('total-val').innerText = cart.reduce((s,i) => s + (i.price * i.qty), 0);
+        };
+
+        const doSearch = (v) => {
+            if(!v) { document.getElementById('results').innerHTML = ''; return; }
+            const res = products.filter(i => i.name.toLowerCase().includes(v.toLowerCase())).slice(0, 5);
+            document.getElementById('results').innerHTML = res.map(i => `
+                <div onclick='addToCart(${JSON.stringify(i)}); document.getElementById("search").value=""; document.getElementById("results").innerHTML="";' style="padding:1rem; border-bottom:1px solid #f1f5f9; background: white;">
+                    ${i.name} - ₹${i.price}
+                </div>
+            `).join('');
+        };
+
+        const handleNewProduct = async (e) => {
+            e.preventDefault();
+            const data = {
+                staffName: "Staff Portal",
+                name: document.getElementById('n-name').value,
+                price: document.getElementById('n-price').value,
+                quantity: document.getElementById('n-qty').value,
+                barcode: document.getElementById('n-barcode').value,
+                time: new Date().toLocaleTimeString()
+            };
+            socket.emit('product:request', data);
+            alert("Product request sent to Admin for approval!");
+            setTab('scan');
+            e.target.reset();
+        };
+
+        const sendToAdmin = () => {
+            if(cart.length === 0) return;
+            socket.emit('bill:request', {
+                staffName: "Staff Portal",
+                items: cart,
+                total: cart.reduce((s,i) => s + (i.price * i.qty), 0),
+                time: new Date().toLocaleTimeString()
+            });
+            alert("Bill sent to Counter!");
+            cart = []; renderCart();
+        };
+    </script>
+</body>
+</html>

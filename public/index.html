@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickBill Admin - Port 4000</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --bg-card: #1e293b;
+            --accent: #22d3ee;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; }
+        
+        .flex { display: flex; }
+        .hidden { display: none !important; }
+        .gap-2 { gap: 0.5rem; }
+        .w-full { width: 100%; }
+        
+        /* Sidebar */
+        .sidebar { width: 260px; background: #020617; border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100vh; }
+        .nav-item { width: 100%; padding: 0.8rem 1.5rem; background: none; border: none; color: var(--text-muted); text-align: left; cursor: pointer; font-weight: 500; transition: 0.2s; border-radius: 0.5rem; margin-bottom: 0.2rem; }
+        .nav-item:hover, .nav-item.active { background: rgba(34, 211, 238, 0.1); color: var(--accent); }
+        
+        /* Main */
+        .main-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        header { height: 64px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 2rem; justify-content: space-between; background: var(--bg); }
+        main { flex: 1; overflow-y: auto; padding: 2rem; }
+        
+        /* Cards */
+        .card { background: var(--bg-card); border-radius: 1rem; border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1.5rem; }
+        .btn { padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: var(--accent); color: #020617; }
+        .btn-ghost { background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border); }
+        
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th { text-align: left; padding: 1rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+        
+        /* Auth */
+        .login-page { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .login-card { background: var(--bg-card); padding: 2.5rem; border-radius: 1.5rem; width: 400px; border: 1px solid var(--border); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .form-input { width: 100%; padding: 0.8rem; background: #0f172a; border: 1px solid var(--border); border-radius: 0.5rem; color: white; margin-bottom: 1rem; outline: none; }
+        
+        /* Notif */
+        .badge { background: #ef4444; color: white; padding: 0.2rem 0.5rem; border-radius: 99px; font-size: 0.7rem; margin-left: 0.5rem; }
+        
+        /* Toast */
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white; padding: 1rem 2rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); animation: slide 0.3s; z-index: 2000; }
+        @keyframes slide { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+    <!-- Auth -->
+    <div id="login-page" class="login-page">
+        <div class="login-card">
+            <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--accent);">Admin Login</h1>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">Port 4000 Server Mode</p>
+            <form id="login-form">
+                <input type="email" id="login-email" class="form-input" placeholder="admin@shop.com" required value="admin@shop.com">
+                <input type="password" id="login-password" class="form-input" placeholder="admin123" required value="admin123">
+                <button type="submit" class="btn btn-primary w-full">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Shell -->
+    <div id="app-ui" class="flex hidden">
+        <aside class="sidebar">
+            <div style="padding: 2rem; font-weight: 800; font-size: 1.25rem; color: var(--accent);">QuickBill POS</div>
+            <nav style="padding: 1rem; flex: 1;">
+                <button class="nav-item active" onclick="navigate('dashboard')">Dashboard</button>
+                <button class="nav-item" onclick="navigate('billing')">Billing POS</button>
+                <button class="nav-item" onclick="navigate('inventory')">Stock Management</button>
+                <button class="nav-item" onclick="navigate('invoices')">Recent Bills</button>
+                <button class="nav-item" onclick="navigate('settings')">Settings</button>
+            </nav>
+            <div style="padding: 1rem; border-top: 1px solid var(--border);">
+                <button class="btn btn-ghost w-full" onclick="logout()" style="color: #f87171;">Logout</button>
+            </div>
+        </aside>
+
+        <div class="main-container">
+            <header>
+                <h2 id="page-title">Dashboard</h2>
+                <div class="flex items-center gap-2">
+                    <a href="/staff-app" target="_blank" class="btn btn-ghost" style="color: var(--accent); text-decoration:none;">📱 Staff Portal</a>
+                    <button class="btn btn-ghost" onclick="toggleNotifs()">
+                        🔔 Requests <span id="notif-badge" class="badge hidden">0</span>
+                    </button>
+                    <div style="font-weight: 600; font-size: 0.9rem;">Admin Panel</div>
+                </div>
+            </header>
+
+            <main id="main-content">
+                <!-- Content here -->
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modal-overlay" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1001;">
+        <div id="modal-content" class="card" style="width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
+            <!-- Modal Body -->
+        </div>
+    </div>
+
+    <script>
+        const socket = io('https://billing-2gll.onrender.com'); // Force Render Backend
+        const API_URL = 'https://billing-2gll.onrender.com';
+        let state = {
+            products: [],
+            invoices: [],
+            billRequests: [],
+            productRequests: [],
+            user: JSON.parse(localStorage.getItem('admin_user')) || null
+        };
+
+        const $ = (id) => document.getElementById(id);
+        const showToast = (msg) => {
+            const t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
+            document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+        };
+
+        const navigate = (page) => {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const main = $('main-content');
+            $('page-title').innerText = page.charAt(0).toUpperCase() + page.slice(1);
+
+            if(page === 'dashboard') {
+                main.innerHTML = `
+                    <div class="card">
+                        <h3>Today's Overview</h3>
+                        <div class="flex gap-2" style="margin-top: 1rem;">
+                            <div class="card" style="flex:1; margin:0;">
+                                <div style="color: var(--text-muted); font-size: 0.8rem;">TOTAL REVENUE</div>
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">₹0.00</div>
+                            </div>
+                            <div class="card" style="flex:1; margin:0;">
+                                <div style="color: var(--text-muted); font-size: 0.8rem;">INVOICES</div>
+                                <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent);">0</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if(page === 'inventory') {
+                main.innerHTML = `<div class="card"><h3>Inventory Control</h3><div id="p-list">Loading...</div></div>`;
+                fetchProducts();
+            } else {
+                main.innerHTML = `<div class="card"><h3>${page}</h3><p style="color:var(--text-muted);">Content coming soon...</p></div>`;
+            }
+        };
+
+        const fetchProducts = async () => {
+            const res = await fetch(`${API_URL}/api/products`);
+            state.products = await res.json();
+            const list = $('p-list');
+            if(state.products.length === 0) list.innerHTML = '<p>No products yet.</p>';
+            else {
+                list.innerHTML = `
+                    <table>
+                        <thead><tr><th>Name</th><th>Price</th><th>Stock</th></tr></thead>
+                        <tbody>${state.products.map(p => `<tr><td>${p.name}</td><td>₹${p.price}</td><td>${p.quantity}</td></tr>`).join('')}</tbody>
+                    </table>
+                `;
+            }
+        };
+
+        // Auth
+        $('login-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const email = $('login-email').value;
+            const password = $('login-password').value;
+
+            // Offline Bypass
+            if(email === 'admin@shop.com' && password === 'admin123') {
+                state.user = { name: 'Admin', role: 'Owner' };
+                localStorage.setItem('admin_user', JSON.stringify(state.user));
+                init(); return;
+            }
+
+            const res = await fetch(`${API_URL}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            if(res.ok) {
+                state.user = (await res.json()).user;
+                localStorage.setItem('admin_user', JSON.stringify(state.user));
+                init();
+            } else { alert("Invalid Credentials"); }
+        };
+
+        const logout = () => {
+            localStorage.removeItem('admin_user');
+            location.reload();
+        };
+
+        const init = () => {
+            if(state.user) {
+                $('login-page').classList.add('hidden');
+                $('app-ui').classList.remove('hidden');
+                navigate('dashboard');
+            }
+        };
+
+        // Socket Logic
+        socket.on('staff:alert', (data) => showToast(`Staff Alert: ${data.name} just logged in!`));
+        socket.on('product:received', (data) => {
+            state.productRequests.push(data);
+            updateBadge();
+            showToast("New Product Approval Request!");
+        });
+        socket.on('bill:received', (data) => {
+            state.billRequests.push(data);
+            updateBadge();
+            showToast("New Bill Request from Staff!");
+        });
+
+        const updateBadge = () => {
+            const count = state.billRequests.length + state.productRequests.length;
+            const b = $('notif-badge');
+            if(count > 0) { b.innerText = count; b.classList.remove('hidden'); }
+            else { b.classList.add('hidden'); }
+        };
+
+        const toggleNotifs = () => {
+            const overlay = $('modal-overlay');
+            overlay.classList.remove('hidden');
+            $('modal-content').innerHTML = `
+                <h3 style="margin-bottom: 1.5rem;">Requests Center</h3>
+                ${state.productRequests.map((r, i) => `
+                    <div class="card" style="border-color: var(--accent); background: rgba(34,211,238,0.05);">
+                        <div style="font-weight: 700;">NEW PRODUCT: ${r.name}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">₹${r.price} | Qty: ${r.quantity}</div>
+                        <div class="flex gap-2" style="margin-top: 1rem;">
+                            <button class="btn btn-primary" style="flex:1;" onclick="approveProduct(${i})">Approve</button>
+                            <button class="btn btn-ghost" onclick="state.productRequests.splice(${i},1); toggleNotifs(); updateBadge();">Reject</button>
+                        </div>
+                    </div>
+                `).join('')}
+                ${state.billRequests.map((r, i) => `
+                    <div class="card" style="border-color: #10b981;">
+                        <div style="font-weight: 700;">BILL FROM: ${r.staffName}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Total: ₹${r.total} | Items: ${r.items.length}</div>
+                        <button class="btn btn-primary w-full" style="margin-top: 1rem; background: #10b981; color: white;" onclick="loadBill(${i})">Process & Print</button>
+                    </div>
+                `).join('')}
+                ${state.productRequests.length === 0 && state.billRequests.length === 0 ? '<p style="text-align:center; padding: 2rem;">No pending requests</p>' : ''}
+                <button class="btn btn-ghost w-full" style="margin-top: 1rem;" onclick="$('modal-overlay').classList.add('hidden')">Close</button>
+            `;
+        };
+
+        const approveProduct = async (idx) => {
+            const req = state.productRequests[idx];
+            const res = await fetch(`${API_URL}/api/products`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            if(res.ok) {
+                state.productRequests.splice(idx, 1);
+                showToast("Product Approved!");
+                toggleNotifs(); updateBadge();
+            }
+        };
+
+        init();
+    </script>
+</body>
+</html>
